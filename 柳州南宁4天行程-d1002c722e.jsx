@@ -1,350 +1,660 @@
-import React, { useState, useEffect, useRef } from 'react';
-import AMapLoader from '@amap/amap-jsapi-loader';
-import { MapPin, Clock, CloudSun, Sun, Cloud, CloudRain, Wind, Coffee, Utensils, Train, Hotel, Mountain, ShoppingBag, Camera, Star, Route } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>柳州 & 南宁 · 4天3晚放松版双人攻略</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.10.5/dist/cdn.min.js" defer></script>
+    <style>
+        :root {
+            --primary-color: #4F9DE8;
+            --secondary-color: #8CC7E7;
+            --accent-color: #F4BA67;
+            --text-color: #4A5568;
+            --bg-color: #F9FAFB;
+            --card-bg: rgba(255, 255, 255, 0.85);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+        
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            overflow-x: hidden;
+        }
+        
+        .glassmorphism {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 16px 0 rgba(31, 38, 135, 0.05);
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(120deg, #e0f2fe 0%, #f0fdfa 100%);
+        }
+        
+        .tab-active {
+            border-bottom: 2px solid var(--primary-color);
+            color: var(--primary-color);
+            font-weight: 500;
+        }
+        
+        .activity-item {
+            transition: all 0.25s ease;
+        }
+        
+        .activity-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px -3px rgba(0, 0, 0, 0.05);
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.4s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* 弥散渐变背景 */
+        .diffused-gradient {
+            background: linear-gradient(120deg, #e0f7fa 0%, #e8f5e9 50%, #fff8e1 100%);
+            opacity: 0.6;
+        }
+        
+        /* 平滑滚动 */
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #bbb;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #999;
+        }
+        
+        /* 卡片阴影效果 */
+        .card-shadow {
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+            transition: box-shadow 0.25s ease, transform 0.25s ease;
+        }
+        
+        .card-shadow:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
 
-const TravelGuide = () => {
-  const [activeDay, setActiveDay] = useState(1);
-  const [mapInstance, setMapInstance] = useState(null);
-  const mapContainerRef = useRef(null);
-  const weatherData = {
-    "柳州": [
-      {
-        date: "2025-05-02",
-        temp_high: 34,
-        temp_low: 23,
-        condition: "多云",
-        humidity: 67,
-        wind: "南风1级"
-      },
-      {
-        date: "2025-05-03",
-        temp_high: 34,
-        temp_low: 23,
-        condition: "阴",
-        humidity: 73,
-        wind: "南风1级"
-      }
-    ],
-    "南宁": [
-      {
-        date: "2025-05-03",
-        temp_high: 32,
-        temp_low: 23,
-        condition: "多云",
-        humidity: 74,
-        wind: "南风1级"
-      },
-      {
-        date: "2025-05-04",
-        temp_high: 31,
-        temp_low: 23,
-        condition: "阵雨",
-        humidity: 79,
-        wind: "南风1级"
-      },
-      {
-        date: "2025-05-05",
-        temp_high: 32,
-        temp_low: 24,
-        condition: "阵雨",
-        humidity: 79,
-        wind: "南风1级"
-      }
-    ]
-  };
-
-  const days = [
-    {
-      id: 1,
-      title: 'Day 1 · 柳州 | 抵达与夜游',
-      date: '5月2日',
-      schedule: [
-        { time: '12:52-17:07', activity: '深圳北→柳州高铁', icon: <Train />, highlight: '建议提前购买靠窗座位，欣赏喀斯特地貌' },
-        { time: '17:30-18:30', activity: '入住酒店（位于五星步行街）', icon: <Hotel /> },
-        { time: '19:00-21:00', activity: '柳江夜游\n1. 游船音乐喷泉（20:00场次）\n2. 风情港夜市（螺蛳粉+炒冰）', icon: <Utensils />, highlight: '游船票提前1小时购买，夜市推荐聚宝螺蛳粉、卢姐炒冰', alternative: '若错过游船，可步行至窑埠古镇拍夜景' },
-        { time: '21:30后', activity: '江边清吧小酌/酒店休息', icon: <Coffee />, highlight: '推荐：柳江边的「微醺码头」或「夜莺酒吧」', alternative: '体力充沛可夜爬马鞍山看全景（电梯20:30关闭）' }
-      ]
-    },
-    {
-      id: 2,
-      title: 'Day 2 · 柳州→南宁',
-      date: '5月3日',
-      schedule: [
-        { time: '9:00-10:00', activity: '青云菜市早餐', icon: <Utensils />, highlight: '必吃：露水汤圆+虾饺+五彩糯米饭，7:30后人流暴增', alternative: '若起晚可去广雅茶楼吃早茶' },
-        { time: '10:30-12:00', activity: '龙潭公园漫步', icon: <Mountain />, highlight: '重点：风雨桥+镜湖+侗寨建筑，穿舒适鞋子', alternative: '若下雨改去柳州工业博物馆（免费，工业风拍照）' },
-        { time: '12:30-14:00', activity: '午餐肥螺庄', icon: <Utensils />, highlight: '鸭脚煲+炒螺蛳粉必点，总店排队快', alternative: '替代店：新菊螺蛳粉（本地人推荐）' },
-        { time: '15:00-18:00', activity: '酒店休整/乌托邦音乐城', icon: <Coffee />, highlight: '复古街区适合拍照，咖啡厅推荐「旧时光咖啡馆」', alternative: '文艺向可逛柳州博物馆（免费，铜鼓展）' },
-        { time: '19:07-20:10', activity: '柳州→南宁东高铁', icon: <Train />, highlight: '建议选靠右座位，日落时分可能看到晚霞' },
-        { time: '20:30-22:00', activity: '建政路夜市', icon: <ShoppingBag />, highlight: '古记卷筒粉+黄记八宝粥+葛师傅水果酸嘢', alternative: '若太累可外卖「舒记老友粉」到酒店' }
-      ]
-    },
-    {
-      id: 3,
-      title: 'Day 3 · 南宁 | 自然疗愈',
-      date: '5月4日',
-      schedule: [
-        { time: '9:30-11:30', activity: '青秀山风景区', icon: <Mountain />, highlight: '北门进→荫生植物园→龙象塔，观光车票10元/次', alternative: '懒人路线：西门直接坐车到龙象塔' },
-        { time: '12:00-13:30', activity: '午餐中山路美食街', icon: <Utensils />, highlight: '复记老友粉+阿光豆浆油条，避开13:00旅游团高峰', alternative: '替代店：桂小厨（广西菜连锁）' },
-        { time: '14:00-17:00', activity: '三街两巷慢逛', icon: <Camera />, highlight: '推荐：城隍庙红墙拍照、「邕城茶档」手打柠檬茶', alternative: '文化向可去广西民族博物馆（需提前预约）' },
-        { time: '18:00-20:00', activity: '晚餐甘家界柠檬鸭+南湖散步', icon: <Utensils />, highlight: '柠檬鸭微辣，搭配芋头饭绝佳，南湖夜景灯光秀20:30开始', alternative: '若排队人多改吃808饭堂（南宁家常菜）' }
-      ]
-    },
-    {
-      id: 4,
-      title: 'Day 4 · 南宁 | 返程日',
-      date: '5月5日',
-      schedule: [
-        { time: '10:00-12:00', activity: '南湖公园骑行', icon: <Route />, highlight: '租双人自行车（30元/小时），推荐环湖西侧林荫道', alternative: '若炎热可改逛广西图书馆（网红旋转楼梯）' },
-        { time: '12:30-14:00', activity: '午餐瑶王府', icon: <Utensils />, highlight: '油茶+簸箕宴体验民族特色，需提前订位', alternative: '简餐可选米马河粉饺（本地小吃集合店）' },
-        { time: '15:00-18:00', activity: '自由活动/广西博物馆', icon: <Camera />, highlight: '博物馆重点：铜鼓展厅+汉代文物，16:30停止入馆', alternative: '购物向：万象城（6楼观景台俯瞰南宁）' },
-        { time: '19:48-23:40', activity: '南宁东→深圳北', icon: <Train />, highlight: '建议提前1小时到站，南宁东站餐饮较少' }
-      ]
-    }
-  ];
-
-  const foodList = [
-    { city: '柳州', category: '正餐', name: '肥螺庄、新菊螺蛳粉、桂小厨' },
-    { city: '南宁', category: '正餐', name: '甘家界柠檬鸭、808饭堂、瑶王府' },
-    { city: '柳州', category: '小吃', name: '青云菜市糯米饭、张飞木薯羹、卢姐炒冰' },
-    { city: '南宁', category: '小吃', name: '古记卷筒粉、复记老友粉、酸品王' },
-    { city: '柳州', category: '饮品', name: '乌托邦音乐城咖啡店、阿嬷手作（广西限定）' },
-    { city: '南宁', category: '饮品', name: '邕城茶档、阿嬷手作（万象城店）' },
-    { city: '柳州', category: '应急方案', name: '外卖螺蛳粉（西环肥仔）、KFC' },
-    { city: '南宁', category: '应急方案', name: '外卖老友粉（舒记）、奶茶（煲珠公）' }
-  ];
-
-  useEffect(() => {
-    AMapLoader.load({
-      key: 'd17c17f8f712c81a7e4241aff4faa7b0',
-      plugins: ['AMap.Scale', 'AMap.ToolBar', 'AMap.MarkerClusterer']
-    }).then((AMap) => {
-      const center = activeDay <= 2 ? [109.4113, 24.3272] : [108.3663, 22.8176];
-      const map = new AMap.Map(mapContainerRef.current, {
-        zoom: 14,
-        center: center
-      });
-      setMapInstance(map);
-
-      // 添加标记点
-      if (activeDay <= 2) {
-        new AMap.Marker({
-          position: [109.4113, 24.3272],
-          title: '五星步行街酒店',
-          map: map
-        });
-        new AMap.Marker({
-          position: [109.3965, 24.3189],
-          title: '青云菜市',
-          map: map
-        });
-      } else {
-        new AMap.Marker({
-          position: [108.3663, 22.8176],
-          title: '青秀山风景区',
-          map: map
-        });
-      }
-
-      return () => map?.destroy();
-    }).catch(e => console.error(e));
-  }, [activeDay]);
-
-  const getWeatherIcon = (condition) => {
-    switch(condition) {
-      case '多云':
-        return <CloudSun className="text-yellow-500" />;
-      case '阴':
-        return <Cloud className="text-gray-400" />;
-      case '阵雨':
-        return <CloudRain className="text-blue-400" />;
-      default:
-        return <Sun className="text-yellow-500" />;
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 font-sans text-gray-800">
-      {/* 导航栏 */}
-      <nav className="sticky top-0 z-50 bg-blue-50 h-12 flex items-center justify-between px-4 shadow-sm">
-        <h1 className="text-xl font-bold text-blue-800">柳州 & 南宁 · 4天3晚放松版双人攻略</h1>
-      </nav>
-
-      <div className="container mx-auto px-4 py-6 max-w-3xl">
-        {/* 主题和交通原则 */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white/90 backdrop-blur-sm rounded-xl p-6 mb-6 shadow-sm hover:shadow-lg transition-shadow"
-        >
-          <h2 className="text-xl font-semibold mb-2">主题：慢节奏·美食·自然·轻文化</h2>
-          <p className="text-gray-600">交通原则：柳州打车为主，南宁地铁+共享电单车</p>
-        </motion.div>
-
-        {/* 每日行程导航 */}
-        <div className="flex overflow-x-auto pb-2 mb-6 scrollbar-hide">
-          {days.map(day => (
-            <button
-              key={day.id}
-              onClick={() => setActiveDay(day.id)}
-              className={`flex-shrink-0 px-4 py-2 mx-1 rounded-full ${activeDay === day.id ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'}`}
-            >
-              {day.title.split('·')[0]}
+        /* 底部导航栏效果 */
+        .nav-item {
+            transition: all 0.25s ease;
+        }
+        
+        .nav-item:hover {
+            transform: translateY(-3px);
+        }
+        
+        /* 时间线样式 */
+        .timeline-container {
+            position: relative;
+        }
+        
+        .timeline-item {
+            position: relative;
+            padding-left: 16px;
+        }
+        
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 1px;
+            background-color: #E5E7EB;
+        }
+        
+        .timeline-item::after {
+            content: '';
+            position: absolute;
+            left: -3px;
+            top: 12px;
+            height: 7px;
+            width: 7px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+        }
+    </style>
+</head>
+<body class="min-h-screen" x-data="{ activeDay: 1 }">
+    <!-- 页面顶部背景 -->
+    <div class="absolute inset-0 diffused-gradient -z-10"></div>
+    
+    <!-- 页面头部 -->
+    <header class="glassmorphism sticky top-0 z-50 px-4 py-3">
+        <div class="container mx-auto">
+            <h1 class="text-lg font-medium text-center text-gray-700">
+                <span class="text-blue-500">柳州</span> & <span class="text-blue-500">南宁</span> · 4天3晚放松版双人攻略
+            </h1>
+            <p class="text-center text-xs text-gray-500 mt-1">慢节奏·美食·自然·轻文化</p>
+        </div>
+    </header>
+    
+    <!-- 日期导航 -->
+    <div class="glassmorphism sticky top-[62px] z-40 px-4 py-2 mb-4 overflow-x-auto whitespace-nowrap">
+        <div class="flex justify-between items-center mx-auto max-w-md">
+            <button @click="activeDay = 1" :class="{'tab-active': activeDay === 1}" class="px-3 py-2 text-sm rounded-md transition-all duration-300">
+                5月2日 <span class="ml-1">🌥️</span><br><span class="text-xs">柳州抵达</span>
             </button>
-          ))}
+            <button @click="activeDay = 2" :class="{'tab-active': activeDay === 2}" class="px-3 py-2 text-sm rounded-md transition-all duration-300">
+                5月3日 <span class="ml-1">🌥️</span><br><span class="text-xs">柳州→南宁</span>
+            </button>
+            <button @click="activeDay = 3" :class="{'tab-active': activeDay === 3}" class="px-3 py-2 text-sm rounded-md transition-all duration-300">
+                5月4日 <span class="ml-1">🌦️</span><br><span class="text-xs">南宁自然</span>
+            </button>
+            <button @click="activeDay = 4" :class="{'tab-active': activeDay === 4}" class="px-3 py-2 text-sm rounded-md transition-all duration-300">
+                5月5日 <span class="ml-1">🌦️</span><br><span class="text-xs">南宁返程</span>
+            </button>
         </div>
-
-        {/* 天气显示 */}
-        <div className="flex justify-between mb-6">
-          <div className="bg-white/90 backdrop-blur-sm rounded-xl p-4 w-1/2 mr-2 flex items-center">
-            <div className="text-3xl mr-3">
-              {getWeatherIcon(weatherData.柳州[activeDay <= 2 ? 0 : 1].condition)}
-            </div>
-            <div>
-              <h3 className="font-medium">柳州</h3>
-              <p className="text-gray-600">
-                {weatherData.柳州[activeDay <= 2 ? 0 : 1].temp_high}°C / {weatherData.柳州[activeDay <= 2 ? 0 : 1].temp_low}°C {weatherData.柳州[activeDay <= 2 ? 0 : 1].condition}
-              </p>
-            </div>
-          </div>
-          <div className="bg-white/90 backdrop-blur-sm rounded-xl p-4 w-1/2 ml-2 flex items-center">
-            <div className="text-3xl mr-3">
-              {getWeatherIcon(weatherData.南宁[activeDay <= 2 ? 0 : activeDay === 3 ? 1 : 2].condition)}
-            </div>
-            <div>
-              <h3 className="font-medium">南宁</h3>
-              <p className="text-gray-600">
-                {weatherData.南宁[activeDay <= 2 ? 0 : activeDay === 3 ? 1 : 2].temp_high}°C / {weatherData.南宁[activeDay <= 2 ? 0 : activeDay === 3 ? 1 : 2].temp_low}°C {weatherData.南宁[activeDay <= 2 ? 0 : activeDay === 3 ? 1 : 2].condition}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* 地图容器 */}
-        <div className="mb-6">
-          <div ref={mapContainerRef} className="w-full h-64 rounded-xl"></div>
-        </div>
-
-        {/* 每日行程详情 */}
-        <AnimatePresence mode="wait">
-          {days.filter(day => day.id === activeDay).map(day => (
-            <motion.div
-              key={day.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-              className="mb-8"
-            >
-              <h2 className="text-2xl font-bold mb-4">{day.title} ({day.date})</h2>
-              
-              {day.schedule.map((item, index) => (
-                <motion.div
-                  key={index}
-                  whileHover={{ scale: 1.02 }}
-                  className="bg-white/90 backdrop-blur-sm rounded-xl p-6 mb-4 shadow-sm hover:shadow-lg transition-shadow"
-                >
-                  <div className="flex items-start">
-                    <div className="mr-4 mt-1 text-blue-600">
-                      {item.icon}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center mb-1">
-                        <Clock className="text-gray-500 mr-1" size={16} />
-                        <span className="text-sm font-medium text-gray-500">{item.time}</span>
-                      </div>
-                      <h3 className="text-lg font-medium mb-2">{item.activity}</h3>
-                      {item.highlight && (
-                        <p className="text-gray-600 mb-2">
-                          <span className="font-medium">提示：</span>{item.highlight}
-                        </p>
-                      )}
-                      {item.alternative && (
-                        <div className="bg-blue-50 rounded-lg p-3 mt-2">
-                          <p className="text-sm text-blue-700">
-                            <span className="font-medium">备选方案：</span>{item.alternative}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </motion.div>
-          ))}
-        </AnimatePresence>
-
-        {/* 美食备选清单 */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="bg-white/90 backdrop-blur-sm rounded-xl p-6 mb-6 shadow-sm hover:shadow-lg transition-shadow"
-        >
-          <h2 className="text-xl font-semibold mb-4">美食备选清单</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-2">城市</th>
-                  <th className="text-left py-2">类别</th>
-                  <th className="text-left py-2">推荐</th>
-                </tr>
-              </thead>
-              <tbody>
-                {foodList.map((item, index) => (
-                  <tr key={index} className="border-b border-gray-100">
-                    <td className="py-3">{item.city}</td>
-                    <td className="py-3">{item.category}</td>
-                    <td className="py-3">{item.name}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </motion.div>
-
-        {/* 灵活调整指南 */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="bg-white/90 backdrop-blur-sm rounded-xl p-6 shadow-sm hover:shadow-lg transition-shadow"
-        >
-          <h2 className="text-xl font-semibold mb-4">灵活调整指南</h2>
-          <div className="mb-4">
-            <h3 className="font-medium mb-2">天气应变：</h3>
-            <ul className="list-disc pl-5 text-gray-600">
-              <li className="mb-1">柳州雨天：龙潭公园→工业博物馆→乌托邦音乐城</li>
-              <li>南宁暴雨：青秀山→广西民族博物馆（室内）→万象城</li>
-            </ul>
-          </div>
-          <div className="mb-4">
-            <h3 className="font-medium mb-2">体力管理：</h3>
-            <ul className="list-disc pl-5 text-gray-600">
-              <li className="mb-1">Day2下午若疲惫，可取消乌托邦行程直接转场南宁</li>
-              <li>Day4南湖骑行改为湖心岛茶室喝茶</li>
-            </ul>
-          </div>
-          <div>
-            <h3 className="font-medium mb-2">错峰技巧：</h3>
-            <ul className="list-disc pl-5 text-gray-600">
-              <li className="mb-1">青云市场7:30前到达，肥螺庄11:30前到店</li>
-              <li>青秀山周末早9点前入园，避开旅游团</li>
-            </ul>
-          </div>
-        </motion.div>
-      </div>
-
-      {/* 页脚 */}
-      <footer className="bg-gray-800/95 py-4 px-6 text-center mt-8">
-        <p className="text-sm text-gray-300">
-          Created by <a href="https://space.coze.cn" className="text-blue-400 hover:text-blue-300 transition-colors">coze space</a>
-        </p>
-        <p className="text-xs text-gray-400 mt-1">页面内容均由AI生成，仅供参考</p>
-      </footer>
     </div>
-  );
-};
-
-export default TravelGuide;
+    
+    <!-- 主要内容区域 -->
+    <main class="container mx-auto px-4 pb-20">
+        <!-- Day 1 -->
+        <div x-show="activeDay === 1" class="fade-in" x-transition>
+            <div class="glassmorphism rounded-lg p-4 mb-5">
+                <div class="flex items-center mb-3">
+                    <div class="h-7 w-7 rounded-full flex items-center justify-center bg-blue-400 text-white mr-3">
+                        <i class="fas fa-map-marker-alt text-xs"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-medium">Day 1 · 柳州 | 抵达与夜游</h2>
+                        <p class="text-xs text-gray-500">5月2日 · 多云 · 25°C</p>
+                    </div>
+                </div>
+                
+                <div class="timeline-container space-y-4">
+                    <div class="timeline-item activity-item card-shadow rounded-lg p-3 bg-white bg-opacity-90">
+                        <div class="flex justify-between items-start">
+                            <h3 class="text-sm font-medium text-gray-700">12:52-17:07</h3>
+                            <span class="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full">✅ 主行程</span>
+                        </div>
+                        <h4 class="font-medium mt-1 text-sm">深圳北→柳州高铁</h4>
+                        <p class="text-xs text-gray-500 mt-1">建议提前购买靠窗座位，欣赏喀斯特地貌</p>
+                        <div class="mt-2 flex items-center text-xs text-gray-500">
+                            <i class="fas fa-info-circle mr-1 text-xs"></i> 全程约4小时15分钟
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item activity-item card-shadow rounded-lg p-3 bg-white bg-opacity-90">
+                        <div class="flex justify-between items-start">
+                            <h3 class="text-sm font-medium text-gray-700">17:30-18:30</h3>
+                            <span class="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full">✅ 主行程</span>
+                        </div>
+                        <h4 class="font-medium mt-1 text-sm">入住酒店（位于五星步行街）</h4>
+                        <div class="mt-2 flex items-center text-xs text-gray-500">
+                            <i class="fas fa-map-pin mr-1 text-xs"></i> 位于市中心，交通便利
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item activity-item card-shadow rounded-lg p-3 bg-white bg-opacity-90">
+                        <div class="flex justify-between items-start">
+                            <h3 class="text-sm font-medium text-gray-700">19:00-21:00</h3>
+                            <span class="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full">✅ 主行程</span>
+                        </div>
+                        <h4 class="font-medium mt-1 text-sm">柳江夜游 🌃</h4>
+                        <p class="text-xs text-gray-500 mt-1">
+                            1. 游船音乐喷泉（20:00场次）<br>
+                            2. 风情港夜市（螺蛳粉+炒冰）
+                        </p>
+                        <div class="mt-2">
+                            <div class="text-xs text-gray-600 inline-flex items-center bg-amber-50 px-2 py-0.5 rounded-full mr-2">
+                                <i class="fas fa-lightbulb mr-1 text-amber-500 text-xs"></i> 游船票提前1小时购买
+                            </div>
+                        </div>
+                        <div class="mt-2 p-2 bg-gray-50 rounded-lg">
+                            <p class="text-xs text-gray-600">
+                                <i class="fas fa-clipboard-list mr-1 text-gray-400"></i> 备选：若错过游船，可步行至 <span class="text-gray-700">窑埠古镇</span> 拍夜景
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item activity-item card-shadow rounded-lg p-3 bg-white bg-opacity-90">
+                        <div class="flex justify-between items-start">
+                            <h3 class="text-sm font-medium text-gray-700">21:30后</h3>
+                            <span class="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full">✅ 主行程</span>
+                        </div>
+                        <h4 class="font-medium mt-1 text-sm">江边清吧小酌/酒店休息 🍹</h4>
+                        <p class="text-xs text-gray-500 mt-1">推荐：柳江边的「微醺码头」或「夜莺酒吧」</p>
+                        <div class="mt-2 p-2 bg-gray-50 rounded-lg">
+                            <p class="text-xs text-gray-600">
+                                <i class="fas fa-clipboard-list mr-1 text-gray-400"></i> 备选：体力充沛可夜爬 <span class="text-gray-700">马鞍山</span> 看全景（电梯20:30关闭）
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Day 2 -->
+        <div x-show="activeDay === 2" class="fade-in" x-transition style="display: none;">
+            <div class="glassmorphism rounded-lg p-4 mb-5">
+                <div class="flex items-center mb-3">
+                    <div class="h-7 w-7 rounded-full flex items-center justify-center bg-blue-400 text-white mr-3">
+                        <i class="fas fa-train text-xs"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-medium">Day 2 · 柳州→南宁</h2>
+                        <p class="text-xs text-gray-500">5月3日 · 多云 · 26°C</p>
+                    </div>
+                </div>
+                
+                <div class="timeline-container space-y-4">
+                    <div class="timeline-item activity-item card-shadow rounded-lg p-3 bg-white bg-opacity-90">
+                        <div class="flex justify-between items-start">
+                            <h3 class="text-sm font-medium text-gray-700">9:00-10:00</h3>
+                            <span class="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full">✅ 主行程</span>
+                        </div>
+                        <h4 class="font-medium mt-1 text-sm">青云菜市早餐 🍲</h4>
+                        <p class="text-xs text-gray-500 mt-1">必吃：露水汤圆+虾饺+五彩糯米饭</p>
+                        <div class="mt-2 flex items-center text-xs text-gray-500">
+                            <i class="fas fa-exclamation-circle mr-1 text-xs"></i> 注意：7:30后人流暴增
+                        </div>
+                        <div class="mt-2 p-2 bg-gray-50 rounded-lg">
+                            <p class="text-xs text-gray-600">
+                                <i class="fas fa-clipboard-list mr-1 text-gray-400"></i> 备选：若起晚可去 <span class="text-gray-700">广雅茶楼</span> 吃早茶
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item activity-item card-shadow rounded-lg p-3 bg-white bg-opacity-90">
+                        <div class="flex justify-between items-start">
+                            <h3 class="text-sm font-medium text-gray-700">10:30-12:00</h3>
+                            <span class="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full">✅ 主行程</span>
+                        </div>
+                        <h4 class="font-medium mt-1 text-sm">龙潭公园漫步 🌿</h4>
+                        <p class="text-xs text-gray-500 mt-1">重点：风雨桥+镜湖+侗寨建筑</p>
+                        <div class="mt-2 flex items-center text-xs text-gray-500">
+                            <i class="fas fa-shoe-prints mr-1 text-xs"></i> 穿舒适鞋子
+                        </div>
+                        <div class="mt-2 p-2 bg-gray-50 rounded-lg">
+                            <p class="text-xs text-gray-600">
+                                <i class="fas fa-clipboard-list mr-1 text-gray-400"></i> 备选：若下雨改去 <span class="text-gray-700">柳州工业博物馆</span>（免费，工业风拍照）
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item activity-item card-shadow rounded-lg p-3 bg-white bg-opacity-90">
+                        <div class="flex justify-between items-start">
+                            <h3 class="text-sm font-medium text-gray-700">12:30-14:00</h3>
+                            <span class="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full">✅ 主行程</span>
+                        </div>
+                        <h4 class="font-medium mt-1 text-sm">午餐 肥螺庄 🍜</h4>
+                        <p class="text-xs text-gray-500 mt-1">鸭脚煲+炒螺蛳粉必点</p>
+                        <div class="mt-2 flex items-center text-xs text-gray-500">
+                            <i class="fas fa-star mr-1 text-xs"></i> 总店排队快
+                        </div>
+                        <div class="mt-2 p-2 bg-gray-50 rounded-lg">
+                            <p class="text-xs text-gray-600">
+                                <i class="fas fa-clipboard-list mr-1 text-gray-400"></i> 替代店： <span class="text-gray-700">新菊螺蛳粉</span>（本地人推荐）
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item activity-item card-shadow rounded-lg p-3 bg-white bg-opacity-90">
+                        <div class="flex justify-between items-start">
+                            <h3 class="text-sm font-medium text-gray-700">15:00-18:00</h3>
+                            <span class="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full">✅ 主行程</span>
+                        </div>
+                        <h4 class="font-medium mt-1 text-sm">酒店休整/乌托邦音乐城 🎵</h4>
+                        <p class="text-xs text-gray-500 mt-1">复古街区适合拍照，咖啡厅推荐「旧时光咖啡馆」</p>
+                        <div class="mt-2 p-2 bg-gray-50 rounded-lg">
+                            <p class="text-xs text-gray-600">
+                                <i class="fas fa-clipboard-list mr-1 text-gray-400"></i> 文艺向可逛 <span class="text-gray-700">柳州博物馆</span>（免费，铜鼓展）
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item activity-item card-shadow rounded-lg p-3 bg-white bg-opacity-90">
+                        <div class="flex justify-between items-start">
+                            <h3 class="text-sm font-medium text-gray-700">19:07-20:10</h3>
+                            <span class="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full">✅ 主行程</span>
+                        </div>
+                        <h4 class="font-medium mt-1 text-sm">柳州→南宁东高铁 🚄</h4>
+                        <p class="text-xs text-gray-500 mt-1">建议选靠右座位，日落时分可能看到晚霞</p>
+                    </div>
+                    
+                    <div class="timeline-item activity-item card-shadow rounded-lg p-3 bg-white bg-opacity-90">
+                        <div class="flex justify-between items-start">
+                            <h3 class="text-sm font-medium text-gray-700">20:30-22:00</h3>
+                            <span class="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full">✅ 主行程</span>
+                        </div>
+                        <h4 class="font-medium mt-1 text-sm">建政路夜市 🏮</h4>
+                        <p class="text-xs text-gray-500 mt-1">古记卷筒粉+黄记八宝粥+葛师傅水果酸嘢</p>
+                        <div class="mt-2 p-2 bg-gray-50 rounded-lg">
+                            <p class="text-xs text-gray-600">
+                                <i class="fas fa-clipboard-list mr-1 text-gray-400"></i> 若太累可外卖「舒记老友粉」到酒店
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Day 3 -->
+        <div x-show="activeDay === 3" class="fade-in" x-transition style="display: none;">
+            <div class="glassmorphism rounded-lg p-4 mb-5">
+                <div class="flex items-center mb-3">
+                    <div class="h-7 w-7 rounded-full flex items-center justify-center bg-blue-400 text-white mr-3">
+                        <i class="fas fa-tree text-xs"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-medium">Day 3 · 南宁 | 自然疗愈</h2>
+                        <p class="text-xs text-gray-500">5月4日 · 阵雨 · 24°C</p>
+                    </div>
+                </div>
+                
+                <div class="timeline-container space-y-4">
+                    <div class="timeline-item activity-item card-shadow rounded-lg p-3 bg-white bg-opacity-90">
+                        <div class="flex justify-between items-start">
+                            <h3 class="text-sm font-medium text-gray-700">9:30-11:30</h3>
+                            <span class="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full">✅ 主行程</span>
+                        </div>
+                        <h4 class="font-medium mt-1 text-sm">青秀山风景区 🏞️</h4>
+                        <p class="text-xs text-gray-500 mt-1">北门进→荫生植物园→龙象塔</p>
+                        <div class="mt-2 flex items-center text-xs text-gray-500">
+                            <i class="fas fa-ticket-alt mr-1 text-xs"></i> 观光车票10元/次
+                        </div>
+                        <div class="mt-2 p-2 bg-gray-50 rounded-lg">
+                            <p class="text-xs text-gray-600">
+                                <i class="fas fa-clipboard-list mr-1 text-gray-400"></i> 懒人路线：西门直接坐车到龙象塔
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item activity-item card-shadow rounded-lg p-3 bg-white bg-opacity-90">
+                        <div class="flex justify-between items-start">
+                            <h3 class="text-sm font-medium text-gray-700">12:00-13:30</h3>
+                            <span class="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full">✅ 主行程</span>
+                        </div>
+                        <h4 class="font-medium mt-1 text-sm">午餐 中山路美食街 🍲</h4>
+                        <p class="text-xs text-gray-500 mt-1">复记老友粉+阿光豆浆油条</p>
+                        <div class="mt-2 flex items-center text-xs text-gray-500">
+                            <i class="fas fa-exclamation-circle mr-1 text-xs"></i> 避开13:00旅游团高峰
+                        </div>
+                        <div class="mt-2 p-2 bg-gray-50 rounded-lg">
+                            <p class="text-xs text-gray-600">
+                                <i class="fas fa-clipboard-list mr-1 text-gray-400"></i> 替代店： <span class="text-gray-700">桂小厨</span>（广西菜连锁）
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item activity-item card-shadow rounded-lg p-3 bg-white bg-opacity-90">
+                        <div class="flex justify-between items-start">
+                            <h3 class="text-sm font-medium text-gray-700">14:00-17:00</h3>
+                            <span class="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full">✅ 主行程</span>
+                        </div>
+                        <h4 class="font-medium mt-1 text-sm">三街两巷慢逛 🏮</h4>
+                        <p class="text-xs text-gray-500 mt-1">推荐：城隍庙红墙拍照、「邕城茶档」手打柠檬茶</p>
+                        <div class="mt-2 p-2 bg-gray-50 rounded-lg">
+                            <p class="text-xs text-gray-600">
+                                <i class="fas fa-clipboard-list mr-1 text-gray-400"></i> 文化向可去 <span class="text-gray-700">广西民族博物馆</span>（需提前预约）
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item activity-item card-shadow rounded-lg p-3 bg-white bg-opacity-90">
+                        <div class="flex justify-between items-start">
+                            <h3 class="text-sm font-medium text-gray-700">18:00-20:00</h3>
+                            <span class="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full">✅ 主行程</span>
+                        </div>
+                        <h4 class="font-medium mt-1 text-sm">晚餐 甘家界柠檬鸭+南湖散步 🦆</h4>
+                        <p class="text-xs text-gray-500 mt-1">柠檬鸭微辣，搭配芋头饭绝佳</p>
+                        <div class="mt-2 flex items-center text-xs text-gray-500">
+                            <i class="fas fa-info-circle mr-1 text-xs"></i> 南湖夜景灯光秀20:30开始
+                        </div>
+                        <div class="mt-2 p-2 bg-gray-50 rounded-lg">
+                            <p class="text-xs text-gray-600">
+                                <i class="fas fa-clipboard-list mr-1 text-gray-400"></i> 若排队人多改吃 <span class="text-gray-700">808饭堂</span>（南宁家常菜）
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Day 4 -->
+        <div x-show="activeDay === 4" class="fade-in" x-transition style="display: none;">
+            <div class="glassmorphism rounded-lg p-4 mb-5">
+                <div class="flex items-center mb-3">
+                    <div class="h-7 w-7 rounded-full flex items-center justify-center bg-blue-400 text-white mr-3">
+                        <i class="fas fa-home text-xs"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-medium">Day 4 · 南宁 | 返程日</h2>
+                        <p class="text-xs text-gray-500">5月5日 · 阵雨 · 23°C</p>
+                    </div>
+                </div>
+                
+                <div class="timeline-container space-y-4">
+                    <div class="timeline-item activity-item card-shadow rounded-lg p-3 bg-white bg-opacity-90">
+                        <div class="flex justify-between items-start">
+                            <h3 class="text-sm font-medium text-gray-700">10:00-12:00</h3>
+                            <span class="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full">✅ 主行程</span>
+                        </div>
+                        <h4 class="font-medium mt-1 text-sm">南湖公园骑行 🚲</h4>
+                        <p class="text-xs text-gray-500 mt-1">租双人自行车（30元/小时），推荐环湖西侧林荫道</p>
+                        <div class="mt-2 p-2 bg-gray-50 rounded-lg">
+                            <p class="text-xs text-gray-600">
+                                <i class="fas fa-clipboard-list mr-1 text-gray-400"></i> 若炎热可改逛 <span class="text-gray-700">广西图书馆</span>（网红旋转楼梯）
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item activity-item card-shadow rounded-lg p-3 bg-white bg-opacity-90">
+                        <div class="flex justify-between items-start">
+                            <h3 class="text-sm font-medium text-gray-700">12:30-14:00</h3>
+                            <span class="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full">✅ 主行程</span>
+                        </div>
+                        <h4 class="font-medium mt-1 text-sm">午餐 瑶王府 🍲</h4>
+                        <p class="text-xs text-gray-500 mt-1">油茶+簸箕宴体验民族特色</p>
+                        <div class="mt-2 flex items-center text-xs text-gray-500">
+                            <i class="fas fa-bookmark mr-1 text-xs"></i> 需提前订位
+                        </div>
+                        <div class="mt-2 p-2 bg-gray-50 rounded-lg">
+                            <p class="text-xs text-gray-600">
+                                <i class="fas fa-clipboard-list mr-1 text-gray-400"></i> 简餐可选 <span class="text-gray-700">米马河粉饺</span>（本地小吃集合店）
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item activity-item card-shadow rounded-lg p-3 bg-white bg-opacity-90">
+                        <div class="flex justify-between items-start">
+                            <h3 class="text-sm font-medium text-gray-700">15:00-18:00</h3>
+                            <span class="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full">✅ 主行程</span>
+                        </div>
+                        <h4 class="font-medium mt-1 text-sm">自由活动/广西博物馆 🏛️</h4>
+                        <p class="text-xs text-gray-500 mt-1">博物馆重点：铜鼓展厅+汉代文物</p>
+                        <div class="mt-2 flex items-center text-xs text-gray-500">
+                            <i class="fas fa-clock mr-1 text-xs"></i> 16:30停止入馆
+                        </div>
+                        <div class="mt-2 p-2 bg-gray-50 rounded-lg">
+                            <p class="text-xs text-gray-600">
+                                <i class="fas fa-clipboard-list mr-1 text-gray-400"></i> 购物向：万象城（6楼观景台俯瞰南宁）
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item activity-item card-shadow rounded-lg p-3 bg-white bg-opacity-90">
+                        <div class="flex justify-between items-start">
+                            <h3 class="text-sm font-medium text-gray-700">19:48-23:40</h3>
+                            <span class="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full">✅ 主行程</span>
+                        </div>
+                        <h4 class="font-medium mt-1 text-sm">南宁东→深圳北 🚄</h4>
+                        <p class="text-xs text-gray-500 mt-1">建议提前1小时到站</p>
+                        <div class="mt-2 flex items-center text-xs text-gray-500">
+                            <i class="fas fa-utensils mr-1 text-xs"></i> 南宁东站餐饮较少，可提前准备
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 美食备选清单 -->
+        <div class="glassmorphism rounded-lg p-4 mb-5">
+            <div class="flex items-center mb-3">
+                <div class="h-7 w-7 rounded-full flex items-center justify-center bg-amber-400 text-white mr-3">
+                    <i class="fas fa-utensils text-xs"></i>
+                </div>
+                <h2 class="text-base font-medium">美食备选清单 🍜</h2>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white bg-opacity-90 rounded-lg">
+                    <thead>
+                        <tr class="border-b border-gray-100">
+                            <th class="py-2 px-3 text-left text-xs font-medium text-gray-600">场景</th>
+                            <th class="py-2 px-3 text-left text-xs font-medium text-gray-600">柳州选项</th>
+                            <th class="py-2 px-3 text-left text-xs font-medium text-gray-600">南宁选项</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-b border-gray-100">
+                            <td class="py-2 px-3 text-xs font-medium text-gray-700">正餐</td>
+                            <td class="py-2 px-3 text-xs text-gray-600">肥螺庄、新菊螺蛳粉、桂小厨</td>
+                            <td class="py-2 px-3 text-xs text-gray-600">甘家界柠檬鸭、808饭堂、瑶王府</td>
+                        </tr>
+                        <tr class="border-b border-gray-100">
+                            <td class="py-2 px-3 text-xs font-medium text-gray-700">小吃</td>
+                            <td class="py-2 px-3 text-xs text-gray-600">青云菜市糯米饭、张飞木薯羹、卢姐炒冰</td>
+                            <td class="py-2 px-3 text-xs text-gray-600">古记卷筒粉、复记老友粉、酸品王</td>
+                        </tr>
+                        <tr class="border-b border-gray-100">
+                            <td class="py-2 px-3 text-xs font-medium text-gray-700">饮品</td>
+                            <td class="py-2 px-3 text-xs text-gray-600">乌托邦音乐城咖啡店、阿嬷手作</td>
+                            <td class="py-2 px-3 text-xs text-gray-600">邕城茶档、阿嬷手作（万象城店）</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 px-3 text-xs font-medium text-gray-700">应急方案</td>
+                            <td class="py-2 px-3 text-xs text-gray-600">外卖螺蛳粉（西环肥仔）、KFC</td>
+                            <td class="py-2 px-3 text-xs text-gray-600">外卖老友粉（舒记）、奶茶（煲珠公）</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- 灵活调整指南 -->
+        <div class="glassmorphism rounded-lg p-4 mb-5">
+            <div class="flex items-center mb-3">
+                <div class="h-7 w-7 rounded-full flex items-center justify-center bg-teal-400 text-white mr-3">
+                    <i class="fas fa-lightbulb text-xs"></i>
+                </div>
+                <h2 class="text-base font-medium">灵活调整指南 💡</h2>
+            </div>
+            
+            <div class="space-y-3">
+                <div class="card-shadow rounded-lg p-3 bg-white bg-opacity-90">
+                    <h3 class="text-sm font-medium text-gray-700">天气应变 🌦️</h3>
+                    <ul class="mt-2 space-y-2 text-xs text-gray-600">
+                        <li class="flex items-start">
+                            <i class="fas fa-umbrella mt-0.5 mr-2 text-blue-400 text-xs"></i>
+                            <span><strong>柳州雨天：</strong>龙潭公园→工业博物馆→乌托邦音乐城</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-cloud-rain mt-0.5 mr-2 text-blue-400 text-xs"></i>
+                            <span><strong>南宁暴雨：</strong>青秀山→广西民族博物馆（室内）→万象城</span>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="card-shadow rounded-lg p-3 bg-white bg-opacity-90">
+                    <h3 class="text-sm font-medium text-gray-700">体力管理 🔋</h3>
+                    <ul class="mt-2 space-y-2 text-xs text-gray-600">
+                        <li class="flex items-start">
+                            <i class="fas fa-battery-half mt-0.5 mr-2 text-amber-400 text-xs"></i>
+                            <span><strong>Day2下午若疲惫：</strong>可取消乌托邦行程直接转场南宁</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-coffee mt-0.5 mr-2 text-amber-400 text-xs"></i>
+                            <span><strong>Day4南湖骑行：</strong>改为湖心岛茶室喝茶</span>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="card-shadow rounded-lg p-3 bg-white bg-opacity-90">
+                    <h3 class="text-sm font-medium text-gray-700">错峰技巧 ⏱️</h3>
+                    <ul class="mt-2 space-y-2 text-xs text-gray-600">
+                        <li class="flex items-start">
+                            <i class="fas fa-hourglass-half mt-0.5 mr-2 text-purple-400 text-xs"></i>
+                            <span><strong>青云市场：</strong>7:30前到达，肥螺庄11:30前到店</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-users mt-0.5 mr-2 text-purple-400 text-xs"></i>
+                            <span><strong>青秀山：</strong>周末早9点前入园，避开旅游团</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 行程核心逻辑 -->
+        <div class="glassmorphism rounded-lg p-4 mb-5">
+            <div class="flex items-center mb-3">
+                <div class="h-7 w-7 rounded-full flex items-center justify-center bg-indigo-400 text-white mr-3">
+                    <i class="fas fa-map text-xs"></i>
+                </div>
+                <h2 class="text-base font-medium">行程核心逻辑 ✨</h2>
+            </div>
+            
+            <div class="text-center p-3 bg-white bg-opacity-90 rounded-lg">
+                <p class="text-sm text-gray-600">上午动·下午静 | 景点-美食相邻区集中打卡 | 留足1.5小时弹性时间缓冲</p>
+                <p class="text-gray-700 mt-2 text-sm">祝你们用最慵懒的节奏，吃最爽的美食！ 🚄🍜🌿</p>
+            </div>
+        </div>
+    </main>
+    
+    <!-- 底部导航栏 -->
+    <footer class="fixed bottom-0 left-0 right-0 glassmorphism py-2 px-4 z-50">
+        <div class="flex justify-around items-center max-w-md mx-auto">
+            <a href="#" class="nav-item flex flex-col items-center">
+                <i class="fas fa-calendar-alt text-blue-500 text-sm"></i>
+                <span class="text-xs mt-0.5 text-gray-600">行程</span>
+            </a>
+            <a href="#" class="nav-item flex flex-col items-center">
+                <i class="fas fa-map-marker-alt text-blue-500 text-sm"></i>
+                <span class="text-xs mt-0.5 text-gray-600">地图</span>
+            </a>
+            <a href="#" class="nav-item flex flex-col items-center">
+                <i class="fas fa-utensils text-blue-500 text-sm"></i>
+                <span class="text-xs mt-0.5 text-gray-600">美食</span>
+            </a>
+            <a href="#" class="nav-item flex flex-col items-center">
+                <i class="fas fa-lightbulb text-blue-500 text-sm"></i>
+                <span class="text-xs mt-0.5 text-gray-600">贴士</span>
+            </a>
+        </div>
+    </footer>
+</body>
+</html>
